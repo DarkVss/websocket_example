@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -156,59 +157,40 @@ namespace WebSocket_example{
         protected void SilentWrite(Output output){
             SilentWrite(this.Stream, output);
         }
+        public static void SilentWrite(NetworkStream stream, Output output) {
+            try {
+                MemoryStream dataStream = new MemoryStream();
 
+                byte[] message = Encoding.UTF8.GetBytes(output.ToJson());
+                int messageSize = message.Length;
 
-        public static void SilentWrite(NetworkStream stream, Output output){
-            try{
-                Queue<string> messageParts = new Queue<string>(SplitTexInGroups(output.ToJson(), 125));
-                int packageCount = messageParts.Count;
-
-                while (messageParts.Count > 0){
-                    // Forming the header for a part of the queue
-                    var header = GetHeader(messageParts.Count == 1, messageParts.Count != packageCount);
-
-                    byte[] messagePart = Encoding.UTF8.GetBytes(messageParts.Dequeue());
-                    header = (header << 7) + messagePart.Length;
-                    byte[] h = IntToByteArray((ushort) header);
-
-                    //Send the header & message to client
-                    stream.Write(h, 0, h.Length);
-                    stream.Write(messagePart, 0, messagePart.Length);
+                dataStream.Append(0x80 + (1 & 0xF));
+                if (messageSize <= 125) {
+                    dataStream.Append( messageSize);
+                } else if (messageSize < 65536) {
+                    dataStream.Append( 126);
+                    dataStream.Append( messageSize >> 8);
+                    dataStream.Append( messageSize & 0xFF);
+                } else {
+                    dataStream.Append( 127);
+                    dataStream.Append( messageSize >> 56);
+                    dataStream.Append( messageSize >> 48);
+                    dataStream.Append( messageSize >> 40);
+                    dataStream.Append( messageSize >> 32);
+                    dataStream.Append( messageSize >> 24);
+                    dataStream.Append( messageSize >> 16);
+                    dataStream.Append( messageSize >> 8);
+                    dataStream.Append( messageSize & 0xFF);
                 }
-            } catch (System.IO.IOException e){
+
+                dataStream.Append(message);
+
+                byte[] data = dataStream.ToArray();
+
+                stream.Write(data, 0, data.Length);
+            } catch (System.IO.IOException e) {
                 Logger.Error($"Failed write: {e}");
             }
-        }
-
-        public static IEnumerable<string> SplitTexInGroups(string original, int size){
-            var p = 0;
-            var l = original.Length;
-            while (l - p > size){
-                yield return original.Substring(p, size);
-                p += size;
-            }
-
-            yield return original.Substring(p);
-        }
-
-        protected static int GetHeader(bool isFinalFrame, bool isContinuationFrame){
-            int header = isFinalFrame ? 1 : 0; //fin: 0 = more frames, 1 = final frame
-            header = (header << 1) + 0; //rsv1
-            header = (header << 1) + 0; //rsv2
-            header = (header << 1) + 0; //rsv3
-            header = (header << 4) + (isContinuationFrame ? 0 : 1); //opcode : 0 = continuation frame, 1 = text
-            header = (header << 1) + 0; //mask: server -> client = no mask
-
-            return header;
-        }
-
-        protected static byte[] IntToByteArray(ushort value){
-            var ary = BitConverter.GetBytes(value);
-            if (BitConverter.IsLittleEndian){
-                Array.Reverse(ary);
-            }
-
-            return ary;
         }
     }
 }
