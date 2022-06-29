@@ -3,11 +3,11 @@ using WebSocket_example.Communication.IO;
 namespace WebSocket_example.Communication{
     public abstract class Commands{
         protected readonly Input Input;
-        protected readonly string ConnectionIdentifier;
+        protected readonly Connection Connection;
 
-        public Commands(string connectionIdentifier,Input input){
+        public Commands(Connection connection,Input input){
             this.Input = input;
-            this.ConnectionIdentifier = connectionIdentifier;
+            this.Connection = connection;
         }
 
         /// <summary>

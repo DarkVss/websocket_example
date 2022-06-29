@@ -91,7 +91,7 @@ namespace WebSocket_example{
 
                                     this.OnMessage?.Invoke(this, input);
 
-                                    Routes.GetInstance().Execute(this.Uid,input);
+                                    Routes.GetInstance().Execute(this,input);
                                 } catch (Exception e){
                                     this.SilentWrite(e.Message);
                                 }

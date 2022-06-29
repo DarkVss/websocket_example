@@ -23,12 +23,12 @@ namespace WebSocket_example.Communication{
 
         public static Routes GetInstance() => _instance ??= new Routes();
 
-        public void Execute(string connectionIdentifier,Input input){
+        public void Execute(Connection connection,Input input){
             if (this.Commands.ContainsKey(input.Command) == false){
                 throw new Exception(Message.COMMAND_UNKNOWN);
             }
 
-            ((Commands) this.Commands[input.Command].GetConstructors()[0].Invoke(new object[]{connectionIdentifier,input})).Execute();
+            ((Commands) this.Commands[input.Command].GetConstructors()[0].Invoke(new object[]{connection,input})).Execute();
         }
 
         public override string ToString(){
